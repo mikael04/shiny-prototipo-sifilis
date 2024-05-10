@@ -1,0 +1,48 @@
+/* Navbar title */
+.navbar{
+  background-color: #f8f8f8 !important;
+}
+.navbar-brand{
+  font-size: 1.5vw !important;
+  font-weight: bold !important;
+}
+/* Sidebar */
+.sidebar{
+  background-color: #f8f8f8 !important;
+}
+
+/* Margem para barra de navegação */
+.navbar-default{
+  margin-left: -24px;
+  padding-left: 0px;
+  margin-top: -24px;
+  padding-top: 0px;
+}
+.navbar-collapse{
+  padding-left: 30px;
+}
+/* Adicionando borda superior para separar inputs */
+.shiny-input-container{
+  padding-top: 10px;
+  border-top-style: solid !important;
+  border-color: lightgray !important;
+}
+.botao-filtros{
+  padding-top: 10px;
+  border-top-style: solid !important;
+  border-color: lightgray !important;
+}
+/* Adicionando borda aos seletores */
+.form-control{
+  border-style: solid !important;
+  border-color: lightgray !important;
+}
+/* Aumentando fonte dos títulos dos inputs */
+.control-label{
+  font-size: 1.2vw !important;
+  font-weight: bold;
+}
+/* Ajustando tamanho dos filtros da bivariada */
+.form-group{
+  width: 100% !important;
+}
