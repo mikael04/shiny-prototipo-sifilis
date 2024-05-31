@@ -10,6 +10,22 @@
 .sidebar{
   background-color: #f8f8f8 !important;
 }
+.accordion-collapse{
+  padding: 0.9vw;
+}
+.sidebar-buttons{
+  display: flex !important;
+}
+/* Fonte dos inputs secundários de seleção */
+#side_filt_ind_desi_idh-label{
+  font-size: 1vw !important;
+}
+#side_filt_indiv-label{
+  font-size: 1vw !important;
+}
+.accordion{
+  margin-bottom: 0px !important;
+}
 
 /* Margem para barra de navegação */
 .navbar-default{
@@ -21,12 +37,17 @@
 .navbar-collapse{
   padding-left: 30px;
 }
+
 /* Adicionando borda superior para separar inputs */
 .shiny-input-container{
   padding-top: 10px;
   border-top-style: solid !important;
   border-color: lightgray !important;
 }
+/*.shiny-input-container{
+  padding-top: 0px;
+  border-color: white !important;
+}*/
 .botao-filtros{
   padding-top: 10px;
   border-top-style: solid !important;

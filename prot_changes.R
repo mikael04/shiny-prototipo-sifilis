@@ -374,7 +374,7 @@ server <- function(session, input, output) {
     df_uf_sel <- readRDS("data/graf_i_uni_df_mapa.RDS")
     mapa <- df_uf_sel |>
       ggplot() +
-      geom_sf(aes(fill = n_casos)) +
+      geom_sf(aes(fill = n_casos_sifg)) +
       # scale_fill_viridis_c() +
       labs(title = "Distribuição de casos de Sífilis por UF",
            fill = "Número de casos") +
@@ -408,7 +408,7 @@ server <- function(session, input, output) {
     mapa <- df_racacor_mapa |>
       dplyr::filter(raca == "Parda") |>
       ggplot() +
-      geom_sf(aes(fill = n_casos)) +
+      geom_sf(aes(fill = n_casos_sifg)) +
       # scale_fill_viridis_c() +
       labs(title = "Distribuição de casos de Sífilis por UF, raça/cor: Parda",
            fill = "Número de casos") +

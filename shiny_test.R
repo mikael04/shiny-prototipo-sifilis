@@ -30,9 +30,13 @@ first_year <- min(as.numeric(f_anos$ano_diag))
 #   from = as.Date(paste0(first_year, "-01-01")),
 #   to = as.Date(paste0(last_year, "-12-01")),
 #   by = "year")
-f_years <- seq(from = first_year, to = last_year, by = 1)
+f_anos <- df_sifilis |>
+  dplyr::select(ano_diag) |>
+  dplyr::distinct(ano_diag) |>
+  dplyr::filter(ano_diag != "****") |>
+  dplyr::arrange(ano_diag)
 
-lenght_years <- length(f_years)
+length_anos <- length(f_anos$ano_diag)
 
 ## Faixa etária ----
 f_fx_et <- df_sifilis |>
@@ -65,6 +69,9 @@ esc_limits <- c("Analfabeto", "1ª a 4ª série incompleta do EF", "4ª série c
                 "Educação superior completo",
                 "Não se aplica", "Em branco/Inválido")
 
+f_ind_socio <- c("IDHM", "IBP", "IDHM Renda", "IDHM Longevidade", "IDHM Educacao",
+                 "PIB Percapita (2010)", "Renda Gini (2010)")
+
 # UI ----
 ui <- page_sidebar(
   ## CSS ----
@@ -83,62 +90,98 @@ ui <- page_sidebar(
     #   ufs_f
     # ),
     ### Filtros ----
-    shinyWidgets::sliderTextInput(
-      inputId = "ano",
-      label = "Escolha o período:",
-      choices = f_years,
-      selected = f_years[c(1, lenght_years)]
-    ),
-    checkboxGroupInput(
-      inputId = "fx_et",
-      label = "Faixa etária",
-      choices = c("10-14" = "1",
-                  "15-19" = "2",
-                  "20-39" = "3",
-                  "49-59" = "4",
-                  "60-64" = "5",
-                  "65-69" = "6",
-                  "70-79" = "7",
-                  "80 ou mais" = "8",
-                  "Em branco/Inválido" = "0"
-      ),
-      selected = c("1", "2", "3", "4", "5", "6", "7", "8"),
-      inline = TRUE
-    ),
+    tags$div(
+      class = "accordion", id = "filtros",
+      tags$div(
+        class = "accordion-item",
+        tags$h2(
+          class = "accordion-header",
+          tags$button(
+            class = "accordion-button collapsed",
+            type = "button",
+            "data-bs-toggle" = "collapse",
+            "data-bs-target" = "#collapseFiltros",
+            "aria-expanded" = "true",
+            "aria-controls" = "collapseFiltros",
+            "Filtros"
+          )
+        ),
+        tags$div(
+          id = "collapseFiltros", class = "accordion-collapse collapse",
+          "data-bs-parent" = "#filtros",
+          shinyWidgets::sliderTextInput(
+            inputId = "ano",
+            label = "Escolha o período:",
+            choices = f_anos$ano_diag,
+            selected = f_anos$ano_diag[c(1, length_anos)]
+          ),
+          checkboxGroupInput(
+            inputId = "fx_et",
+            label = "Faixa etária",
+            choices = c("10-14" = "1",
+                        "15-19" = "2",
+                        "20-39" = "3",
+                        "49-59" = "4",
+                        "60-64" = "5",
+                        "65-69" = "6",
+                        "70-79" = "7",
+                        "80 ou mais" = "8",
+                        "Em branco/Inválido" = "0"
+            ),
+            selected = c("1", "2", "3", "4", "5", "6", "7", "8"),
+            inline = TRUE
+          ),
 
-    checkboxGroupInput(
-      inputId = "racacor",
-      label = "Raça/Cor",
-      choices = c("Amarela" = "1",
-                  "Branca" = "2",
-                  "Indigena" = "3",
-                  "Parda" = "4",
-                  "Preta" = "5",
-                  "Em branco/Inválido" = "0"
-      ),
-      selected = c("1", "2", "3", "4", "5"),
-      inline = TRUE
-    ),
-    checkboxGroupInput(
-      inputId = "esc",
-      label = "Escolaridade",
-      choices = c("Analfabeto" = "1",
-                  "Fundamental" = "2",
-                  "Médio" = "3",
-                  "Superior" = "4",
-                  "Em branco/Inválido" = "0"
-      ),
-      selected = c("1", "2", "3", "4"),
-      inline = TRUE
+          checkboxGroupInput(
+            inputId = "racacor",
+            label = "Raça/Cor",
+            choices = c("Amarela" = "1",
+                        "Branca" = "2",
+                        "Indigena" = "3",
+                        "Parda" = "4",
+                        "Preta" = "5",
+                        "Em branco/Inválido" = "0"
+            ),
+            selected = c("1", "2", "3", "4", "5"),
+            inline = TRUE
+          ),
+          checkboxGroupInput(
+            inputId = "esc",
+            label = "Escolaridade",
+            choices = c("Analfabeto" = "1",
+                        "Fundamental" = "2",
+                        "Médio" = "3",
+                        "Superior" = "4",
+                        "Em branco/Inválido" = "0"
+            ),
+            selected = c("1", "2", "3", "4"),
+            inline = TRUE
+          ),
+          shinyWidgets::pickerInput(
+            label = "Localidade",
+            inputId = "loc",
+            choices = c("Brasil", "Região", "Unidade da federação",
+                        "Município"),
+            selected = "Brasil",
+          )
+        )
+      )
     ),
     shinyWidgets::pickerInput(
-      label = "Localidade",
-      inputId = "loc",
-      choices = c("Brasil", "Região", "Unidade da federação",
-                  "Município"),
-      selected = "Brasil",
+      inputId = "ind_desi_socio",
+      label = "Indicadores de Desigualdades Socioeconômicas",
+      choices = f_ind_socio,
+      selected = f_ind_socio[1]
     ),
   ),
+  page_navbar(
+    id = "nav",
+    ### Univariada ----
+    nav_panel(
+      "Univariada 1",
+      id = "univ-1",
+    )
+  )
 )
 # Server ----
 server <- function(session, input, output) {

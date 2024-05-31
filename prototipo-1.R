@@ -78,7 +78,8 @@ f_regioes <- c("Norte", "Nordeste", "Sudeste", "Sul", "Centro-Oeste")
 f_anos <- df_sifilis |>
   dplyr::select(ano_diag) |>
   dplyr::distinct(ano_diag) |>
-  dplyr::filter(ano_diag != "****")
+  dplyr::filter(ano_diag != "****") |>
+  dplyr::arrange(ano_diag)
 
 length_anos <- length(f_anos$ano_diag)
 
@@ -88,9 +89,14 @@ f_meses <- df_sifilis |>
   dplyr::filter(mes_diag != "**")
 
 
+## Índices de desigualdade socioeconômicos ----
+
+f_ind_socio <- c("IBP", "IDH Municipal", "IDHM Renda", "IDHM Longevidade", "IDHM Educacao",
+                 "PBP Percapita (2010)", "Renda Gini (2010)")
+
+## Código dos municípios ----
 cod_ibge_mun <- data.table::fread("data-raw/cod_ibge_mun_ufs.csv") |>
   dplyr::select(cod_ibge, nome_mun, uf, nome_uf)
-
 
 
 # UI ----
@@ -105,93 +111,92 @@ ui <- page_sidebar(
   sidebar = sidebar(
     # "sidebar",
     width = 350,
-    #### Ano ----
-    shinyWidgets::sliderTextInput(
-      inputId = "ano",
-      label = "Escolha o período:",
-      choices = f_anos$ano_diag,
-      selected = f_anos$ano_diag[c(1, length_anos)]
-    ),
-    #### Faixa etária ----
-    checkboxGroupInput(
-      inputId = "fx_et",
-      label = "Faixa etária",
-      choices = c("10-14" = "1",
-                  "15-19" = "2",
-                  "20-24" = "3",
-                  "25-29" = "4",
-                  "30-39" = "5",
-                  "49-59" = "6",
-                  "60 ou mais" = "7",
-                  "Em branco/Inválido" = "0"
-      ),
-      selected = c("1", "2", "3", "4", "5", "6", "7", "8"),
-      inline = TRUE
-    ),
-    #### Raça/Cor ----
-    checkboxGroupInput(
-      inputId = "racacor",
-      label = "Raça/Cor",
-      choices = c("Amarela" = "1",
-                  "Branca" = "2",
-                  "Indigena" = "3",
-                  "Parda" = "4",
-                  "Preta" = "5",
-                  "Em branco/Inválido" = "0"
-      ),
-      selected = c("1", "2", "3", "4", "5"),
-      inline = TRUE
-    ),
-    #### Escolaridade ----
-    checkboxGroupInput(
-      inputId = "esc",
-      label = "Escolaridade",
-      choices = c("Analfabeto" = "1", "1ª a 4ª série incompleta do EF" = "2",
-                  "4ª série completa do EF" = "3", "5ª à 8ª série incompleta do EF" = "4",
-                  "Ensino fundamental completo" = "5", "Ensino médio incompleto" = "6",
-                  "Ensino médio completo" = "7", "Educação superior incompleta" = "8",
-                  "Educação superior completa" = "9",
-                  "Em branco/Inválido" = "0"
-      ),
-      selected = c("1", "2", "3", "4", "5", "6", "7", "8", "9"),
-      inline = TRUE
-    ),
-    #### Localidade ----
-    shinyWidgets::pickerInput(
-      label = "Localidade",
-      inputId = "loc",
-      choices = c("Brasil", "Região", "Unidade da federação",
-                  "Município"),
-      selected = "Brasil",
-    ),
-    uiOutput("extra_geoloc_1"),
-    uiOutput("extra_geoloc_2"),
-    # shinyWidgets::sliderTextInput(
-    #   inputId = "date",
-    #   label = "Escolha o Período:",
-    #   choices = date_f,
-    #   selected = date_f[c(1, length(date_f))]
-    # )
-    # div(
-    #   class="combine_vars",
-    #   shinyWidgets::pickerInput(
-    #     label = "Nascimentos por",
-    #     inputId = "var_sel_1",
-    #     choices = list(
-    #       `Variáveis de nascidos vivos` = var_nasc_vivo,
-    #       `Variáveis da mãe do nascido` = var_mae_nasc
-    #     )
-    #   )
-    # ),
-    div(
-      class="botao-filtros",
-      shinyWidgets::actionBttn(
-        inputId = "applyFilters",
-        label = "Aplicar",
-        style = "jelly",
-        color = "primary"
+    ### Filtros ----
+    tags$div(
+      class = "accordion", id = "filtros",
+      tags$div(
+        class = "accordion-item",
+        tags$h2(
+          class = "accordion-header",
+          tags$button(
+            class = "accordion-button collapsed",
+            type = "button",
+            "data-bs-toggle" = "collapse",
+            "data-bs-target" = "#collapseFiltros",
+            "aria-expanded" = "true",
+            "aria-controls" = "collapseFiltros",
+            "Filtros"
+          )
+        ),
+        tags$div(
+          id = "collapseFiltros", class = "accordion-collapse collapse",
+          "data-bs-parent" = "#filtros",
+          shinyWidgets::sliderTextInput(
+            inputId = "ano",
+            label = "Escolha o período:",
+            choices = f_anos$ano_diag,
+            selected = f_anos$ano_diag[c(1, length_anos)]
+          ),
+          checkboxGroupInput(
+            inputId = "fx_et",
+            label = "Faixa etária",
+            choices = c("10-14" = "1",
+                        "15-19" = "2",
+                        "20-39" = "3",
+                        "49-59" = "4",
+                        "60-64" = "5",
+                        "65-69" = "6",
+                        "70-79" = "7",
+                        "80 ou mais" = "8",
+                        "Em branco/Inválido" = "0"
+            ),
+            selected = c("1", "2", "3", "4", "5", "6", "7", "8"),
+            inline = TRUE
+          ),
+
+          checkboxGroupInput(
+            inputId = "racacor",
+            label = "Raça/Cor",
+            choices = c("Amarela" = "1",
+                        "Branca" = "2",
+                        "Indigena" = "3",
+                        "Parda" = "4",
+                        "Preta" = "5",
+                        "Em branco/Inválido" = "0"
+            ),
+            selected = c("1", "2", "3", "4", "5"),
+            inline = TRUE
+          ),
+          checkboxGroupInput(
+            inputId = "esc",
+            label = "Escolaridade",
+            choices = c("Analfabeto" = "1",
+                        "Fundamental" = "2",
+                        "Médio" = "3",
+                        "Superior" = "4",
+                        "Em branco/Inválido" = "0"
+            ),
+            selected = c("1", "2", "3", "4"),
+            inline = TRUE
+          ),
+          shinyWidgets::pickerInput(
+            label = "Localidade",
+            inputId = "loc",
+            choices = c("Brasil", "Região", "Unidade da federação",
+                        "Município"),
+            selected = "Brasil",
+          )
+        )
       )
-    )
+    ),
+    ### Seleção de indicadores de desigualdades socioeconômicas ----
+    shinyWidgets::pickerInput(
+      inputId = "ind_desi_socio",
+      label = "Indicadores de Desigualdades Socioeconômicas",
+      choices = f_ind_socio,
+      selected = f_ind_socio[2]
+    ),
+    uiOutput("extra_ind_desi_socio")
   ),
   ## Row panel ----
   page_navbar(
@@ -292,7 +297,6 @@ server <- function(session, input, output) {
   # Valores reativos ----
   start = reactiveValues(value = TRUE)
 
-  #
 
   # Filtros reativos ----
   ## Geolocalização ----
@@ -360,14 +364,39 @@ server <- function(session, input, output) {
       )
     }
   })
+  ## Filtros dos indicadores de desigualdades socioeconômicas ----
+  observeEvent(input$ind_desi_socio, {
+    # browser()
+    if(input$ind_desi_socio == "IDH Municipal" || input$ind_desi_socio == "IDHM Renda" ||
+       input$ind_desi_socio == "IDHM Longevidade" || input$ind_desi_socio == "IDHM Educacao"){
+      output$extra_ind_desi_socio <- renderUI({
+        checkboxGroupInput(
+          inputId = "ind_desi_idh",
+          label = "Níveis de IDH",
+          choices = c("Baixa" = "1",
+                      "Média" = "2",
+                      "Alta" = "3",
+                      "Muito alta" = "4",
+                      "Em branco/Inválido" = "0"
+          ),
+          selected = c("1", "2", "3", "4"),
+          inline = TRUE
+        )
+      })
+    }
+  })
+
   # Gráficos iniciais ----
   ## Univariada ----
   ### Mapa ----
   output$univ_mapa <- renderPlot({
-    df_uf_sel <- readRDS("data/graf_i_uni_df_mapa.RDS")
+    # browser()
+    df_uf_sel <- readRDS("data/graf_i_uni_df_mapa.RDS") |>
+      dplyr::rename(n_casos_sifg = n_casos)
+
     mapa <- df_uf_sel |>
       ggplot() +
-      geom_sf(aes(fill = n_casos)) +
+      geom_sf(aes(fill = n_casos_sifg)) +
       # scale_fill_viridis_c() +
       labs(title = "Distribuição de casos de Sífilis por UF",
            fill = "Número de casos") +
@@ -401,7 +430,7 @@ server <- function(session, input, output) {
     mapa <- df_racacor_mapa |>
       dplyr::filter(raca == "Parda") |>
       ggplot() +
-      geom_sf(aes(fill = n_casos)) +
+      geom_sf(aes(fill = n_casos_sifg)) +
       # scale_fill_viridis_c() +
       labs(title = "Distribuição de casos de Sífilis por UF, raça/cor: Parda",
            fill = "Número de casos") +

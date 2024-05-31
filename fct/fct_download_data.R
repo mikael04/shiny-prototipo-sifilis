@@ -22,14 +22,33 @@ func_download_data <- function(){
     bigrquery::bigquery(),
     project = "pdi-covid-basededados",
     dataset = "sifilis_gestantes"
-  )
-  df_sifilis <- tbl(con, "view_agregado_sifilis_gestantes_a_partir_2007_mikael") |>
-    dplyr::collect() |>
-    dplyr::rename(uf_res = `_UF_RESI`, mun_res = ID_MN_RESI,
-                  ano_diag = `_ANO_DIAG`, mes_diag = `_MES_DIAG`,
-                  faixa_etaria = `_FX_ETARIA`, raca = `_CS_RACA`, escolaridade = `_ESCOLARIDADE`,
-                  n_casos = CASOS_CONF)
+  ) # gestantes / n de nasc vivos no município
+  df_sifilis <- tbl(con, "view_agregado_sifilis_gestantes_a_partir_2007") |>
+    # dplyr::select(`UF_RESI`, ID_MN_RESI,
+    #               `CASOS_SIFG`, `NASCIDOS_VIVOS`, `NASCIDOS_COM_ANOMALIA`,
+    #               `ANO`,
+    #               `FX_ETARIA`, `CS_RACA`, `ESCOLARIDADE`, CASOS_SIFG,
+    #               ## Indicadores de desigualdade
+    #               IBP_QUINTIL, IDHM_2010) |>
+    # dplyr::rename(uf_res = `UF_RESI`, mun_res = ID_MN_RESI,
+    #               casos_sifg = `CASOS_SIFG`, nasc_viv =  `NASCIDOS_VIVOS`,
+    #               nasc_c_anom = `NASCIDOS_COM_ANOMALIA`,
+    #               ano_diag = `ANO`,
+    #               faixa_etaria = `FX_ETARIA`, raca = `CS_RACA`, escolaridade = `ESCOLARIDADE`,
+    #               n_casos_sifg = CASOS_SIFG) |>
+    dplyr::collect()
 
-  saveRDS(df_sifilis, "data-raw/df_sifilis.RDS")
+  data.table::fwrite(df_sifilis, "data-raw/df_sifilis_all.csv")
+
+  ## Calculando taxa de sífilis por nascidos vivos
+  df_sifilis <- df_sifilis |>
+    dplyr::mutate(taxa_sifg_nv = CASOS_SIFG / NASCIDOS_VIVOS)
+
+  # colnames(df_sifilis)
+  saveRDS(df_sifilis, "data-raw/df_sifilis_all.RDS")
+
+  # df_sifilis_ <- readRDS("data-raw/df_sifilis.RDS")
 }
+
+#município de residência, ano do diagnóstico, mês de diagnóstico, faixa etária, raça/cor e escolaridade  (variável CASOS_SIFG);
 
