@@ -1,0 +1,149 @@
+---
+title: "Relatório teste"
+author: "Mikael Marin Coletto"
+sidebar: false
+toc: true
+execute:
+  warning: false
+cache: FALSE
+lang: pt
+theme: cerulean
+reference-location: margin
+code-fold: true
+code-summary: "Mostrar o código"
+code-link: true
+format: 
+  html:
+    page-layout: full
+    output-file: "relatorio_html_test"
+    embed-resources: true
+    anchor-sections: true
+    smooth-scroll: true
+editor: visual
+params:
+  run_all_code: "T"
+  overwrite_tables: "T"
+  use_db: "T"
+  debug: "F"
+  teste_interno: "F"
+---
+
+# Teste
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(gt)
+```
+
+```{r lendo-dados}
+sif_13m <- T
+if(sif_13m){
+  # df_sifilis <- readRDS("data-raw/df_sifilis_all.RDS") |>
+  #   janitor::clean_names() |>
+  #   dplyr::rename(esc = escolaridade, nasc_c_anom = nascidos_com_anomalia,
+  #                 nasc_viv = nascidos_vivos, raca = cs_raca)
+  # 
+  # df_sifilis_test <- df_sifilis |>
+  #   dplyr::select(nome_mn_resi, ano, casos_sifg, nasc_c_anom, nasc_viv, 
+  #                 raca, fx_etaria)
+  # data.table::fwrite(df_sifilis_test, "data-raw/df_sifilis_test.csv")
+  df_sifilis <- data.table::fread("data-raw/df_sifilis_test.csv")
+} else {
+  df_sifilis <- readRDS("data-raw/df_sifilis_mun_ano_fx_et_racacor_esc.RDS") |>
+  janitor::clean_names()
+}
+head(df_sifilis) |> 
+  gt::gt()
+
+# 
+
+```
+
+## Variáveis categóricas
+
+### Tabela geral
+
+```{r analise-categoricas}
+df_sifilis_categoric_vars <- df_sifilis |> 
+  dplyr::select(where(is.character))
+
+variaveis <- colnames(df_sifilis_categoric_vars)
+
+df_categoric <- data.frame(variavel = character(), 
+                           n_distinct = numeric(), 
+                           levels = character())
+
+for(i in variaveis){
+  n_distinct = n_distinct(df_sifilis_categoric_vars[[i]], na.rm = TRUE)
+  levels = paste(sort(unique(df_sifilis_categoric_vars[[i]])), collapse = ", ")
+  if(length(unique(df_sifilis_categoric_vars[[i]])) > 20){
+    levels = "Muitos valores distintos (> 20)"
+  }
+  df_categoric <- rbind(df_categoric, data.frame(variavel = i, 
+                                                 n_distinct = n_distinct, levels = levels))
+  # print(df_categoric)
+}
+
+df_categoric |> 
+  gt::gt() |> 
+  gt::cols_label(variavel = "Variável", n_distinct = "Nº de valores distintos", levels = "Valores distintos")
+
+```
+
+### Gráficos
+
+```{r graficos-categoricas}
+df_categoric_av <- df_categoric |>
+  dplyr::filter(n_distinct <= 20)
+
+library(ggtext)
+vars_av <- df_categoric_av$variavel
+grafs_categ <- list()
+
+i <- 1
+# for(var in vars_av){  
+  var <- "fx_etaria"
+  
+  grafs_categ[[i]] <- df_sifilis_categoric_vars |>
+    cbind(df_sifilis$casos_sifg) |>
+    dplyr::rename(casos_sifg = V2) |>
+    tibble::as_tibble() |>
+    # dplyr::group_by(!!as.name(var)) |>
+    dplyr::select(!!as.name(var), casos_sifg) |>
+    ggplot2::ggplot() +
+    ggplot2::geom_bar(aes(x = !!as.name(var)), fill = "#ABA2D1") +
+    ggplot2::labs(
+      title = paste0("Distribuição da variável ", var, ""),
+      x = var,
+      y = "Número de casos") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
+    ggplot2::scale_y_continuous(labels = scales::number)
+  
+  # i=i+1
+# }
+
+grafs_categ[[1]]
+# grafs_categ
+# 
+# iris %>% 
+#   group_by(Species) %>% 
+#   summarize(mean_petal_width = mean(Petal.Width)) %>% 
+#   ungroup() %>% 
+#   ggplot(aes(Species, mean_petal_width,
+#              fill = Species)) +
+#   geom_col(show.legend = FALSE) +
+#   hrbrthemes::theme_ipsum() +
+#   scale_fill_manual(values = c("setosa" = "lightgray",
+#                                "versicolor" = "lightgray",
+#                                "virginica" = "red")) +
+#   labs(x = NULL,
+#        y = NULL,
+#        title = "<span style = 'color: red;'>Virginica irises</span> have the largest average sepal width") +
+#   theme(plot.title = element_markdown())
+# 
+# ggtitle()
+
+```

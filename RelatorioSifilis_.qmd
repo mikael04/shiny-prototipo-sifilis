@@ -1,5 +1,5 @@
 ---
-title: "Relatório de dados de Sífilis"
+title: "Relatório de dados de Sífilis (dados não agregados)"
 author: "Mikael Marin Coletto"
 sidebar: false
 toc: true
@@ -15,7 +15,7 @@ code-link: true
 format: 
   html:
     page-layout: full
-    output-file: "relatorio_html"
+    output-file: "relatorio_n_agreg_html_test"
     embed-resources: true
     anchor-sections: true
     smooth-scroll: true
@@ -23,7 +23,7 @@ format:
     toc: true
     number-sections: true
     colorlinks: true
-    output-file: "relatorio_pdf"
+    output-file: "relatorio_n_agreg_pdf_test"
 editor: visual
 params:
   run_all_code: "T"
@@ -40,11 +40,11 @@ library(dplyr)
 library(gt)
 ```
 
-# Sífilis congênita
+# Sífilis gestacional
 
 ## Introdução
 
-Este relatório tem como objetivo descrever o banco de dados de dados longitudinal sobre a Sífilis Gestacional e Congênita no Brasil no período de 2007 a 2023, obtidos do Sistema de Informação de Agravos de Notificação (SINAN). Os dados foram agregados segundo período, município, faixa etária, raça/cor e escolaridade e integram variáveis de origem de outras fontes e sistemas de informações como Sistema de Informações de Nascidos Vivos (SINASC), Cadastro Nacional de Estabelecimentos de Saúde (CNES), Sistema de Informações Hospitalares (SIH), Sistema de Informação de Mortalidade (SIM), Programa Bolsa Família, Cobertura de Estratégia de Saúde da Família e Atenção Primária, indicadores socioeconômicos, entre outros.
+Este relatório tem como objetivo descrever o banco de dados de dados longitudinal sobre a Sífilis Gestacional e Congênita no Brasil no período de 2007 a 2023, obtidos do Sistema de Informação de Agravos de Notificação (SINAN). Os dados explorados não foram agregados, apenas foram unidas em uma grande base. As variáveis de origem de outras fontes e sistemas de informações como Sistema de Informações de Nascidos Vivos (SINASC), Cadastro Nacional de Estabelecimentos de Saúde (CNES), Sistema de Informações Hospitalares (SIH), Sistema de Informação de Mortalidade (SIM), Programa Bolsa Família, Cobertura de Estratégia de Saúde da Família e Atenção Primária, indicadores socioeconômicos, entre outros.
 
 ## Dados
 
@@ -59,14 +59,18 @@ Os dados foram obtidos do banco de dados do SINAN e estão disponíveis no arqui
 -   Número de casos de Sífilis
 
 ```{r lendo-dados}
-sif_13m <- T
-if(sif_13m){
-  df_sifilis <- readRDS("data-raw/df_sifilis_all.RDS")
-} else {
-  df_sifilis <- readRDS("data-raw/df_sifilis_mun_ano_fx_et_racacor_esc.RDS")
-}
+df_sifilis <- readRDS("data-raw/df_sifilis_all_n_agreg.RDS") |>
+  janitor::clean_names() |> 
+  dplyr::rename(ano = ano_diag, raca = cs_raca, esc = escolaridade,
+                mes = mes_diag)
+
 head(df_sifilis) |> 
   gt::gt()
+
+### Alterando variáveis numéricas para seu tipo correto
+vars_num <- c("ano")
+df_sifilis <- df_sifilis |> 
+  dplyr::mutate(across(all_of(vars_num), as.numeric))
 
 ```
 
@@ -76,8 +80,6 @@ head(df_sifilis) |>
 
 ```{r analise-completude}
 variaveis <- colnames(df_sifilis)
-
-library(dplyr)
 
 ## Definindo como NA as variáveis que possuem valores inválidos
 df_sifilis_test <- df_sifilis %>%
@@ -99,7 +101,7 @@ df_completude |>
 
 ```{r analise-completude-ano}
 
-vars <- c("faixa_etaria", "raca", "escolaridade")
+vars <- c("fx_etaria", "raca", "esc")
 
 ## Período
 years <- 2007:2023
@@ -113,26 +115,30 @@ for (year in years) {
 }
 
 for(var in vars){
-  # var <- "faixa_etaria"
+  # var <- "raca"
   df_sifilis_ano_var <- df_sifilis_test |>
-    dplyr::select(ano_diag, !!as.name(var), n_casos_sifg) |> 
-    dplyr::filter(!is.na(ano_diag)) |>
-    dplyr::group_by(ano_diag, !!as.name(var)) |> 
-    dplyr::mutate(n = sum(n_casos_sifg)) |> 
-    dplyr::arrange(ano_diag, !!as.name(var)) |> 
-    dplyr::select(-n_casos_sifg) |>
-    dplyr::distinct(ano_diag, !!as.name(var), .keep_all = TRUE)
+    dplyr::select(ano, !!as.name(var)) |> 
+    dplyr::filter(!is.na(ano)) |>
+    dplyr::group_by(ano, !!as.name(var)) |> 
+    dplyr::mutate(n = n()) |> 
+    dplyr::arrange(ano, !!as.name(var)) |> 
+    dplyr::distinct(ano, !!as.name(var), .keep_all = TRUE)
   
   df_sifilis_ano_var <- df_sifilis_ano_var |> 
     dplyr::mutate(categs_var = ifelse(is.na(!!as.name(var)), "inv", "val")) |>
-    dplyr::group_by(ano_diag, categs_var) |>
+    dplyr::group_by(ano, categs_var) |>
     dplyr::summarise(n = sum(n)) |>
     dplyr::ungroup() |> 
-    tidyr::pivot_wider(names_from = categs_var, values_from = n)
+    tidyr::pivot_wider(names_from = categs_var, values_from = n, values_fill = 0)
+  
+  if(!("inv" %in% colnames(df_sifilis_ano_var))){
+    df_sifilis_ano_var <- df_sifilis_ano_var |> 
+      dplyr::mutate(inv = 0)
+  }
   
   df_sifilis_ano_var <- df_sifilis_ano_var |>
     dplyr::mutate(perc = paste0(round(val/(val + inv)*100, 2), "%")) |> 
-    dplyr::select(ano_diag, perc)
+    dplyr::select(ano, perc)
   
   
   df_var_aux <- t(df_sifilis_ano_var) |> 
@@ -147,7 +153,6 @@ for(var in vars){
 df_var |> 
   gt::gt() |> 
   gt::cols_label(var = "Variável")
-
 
 ```
 
@@ -216,41 +221,54 @@ df_categoric |>
 df_categoric_av <- df_categoric |>
   dplyr::filter(n_distinct <= 20)
 
+library(ggtext)
 vars_av <- df_categoric_av$variavel
+grafs_categ <- list()
 
-for(var in vars_av){
-  # var <- "ano_diag"
-  df_sifilis_categoric_vars |>
-    rbind(df_sifilis$n_casos_sifg) |>
-    tibble::as_tibble() |>
-    # dplyr::group_by(!!as.name(var)) |>
-    dplyr::select(!!as.name(var), n_casos_sifg) |>
+i <- 1
+for(var in vars_av){  
+  # var <- "raca"
+  
+  grafs_categ[[i]] <- df_sifilis_categoric_vars |>
+    dplyr::group_by(!!as.name(var)) |>
+    dplyr::summarise(casos_sifg = n()) |>
+    dplyr::select(!!as.name(var), casos_sifg) |>
     ggplot2::ggplot() +
-    ggplot2::geom_bar(aes(x = !!as.name(var)), fill = "#ABA2D1") +
-    ggplot2::labs(title = paste("Distribuição de", !!as.name(var)),
-         x = !!as.name(var),
-         y = "Número de casos") +
+    ggplot2::geom_col(aes(x = !!as.name(var), y = casos_sifg), fill = "#ABA2D1") +
+    ggplot2::labs(
+      title = paste("Distribuição da variável ", var, ""),
+      x = var,
+      y = "Número de casos") +
     ggplot2::theme_minimal() +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
+    ggplot2::scale_y_continuous(labels = scales::number)
+  
+  i=i+1
+  
+  df_sifilis_categoric_vars |>
+    dplyr::group_by(!!as.name(var)) |>
+    dplyr::summarise(casos_sifg = n())
 }
 
+# grafs_categ[[1]]
+grafs_categ
 
 ```
-
 
 #### Distribuição de número de casos de Sífilis
 
 ##### Ano de diagnóstico
 
 ```{r distribuicao-ano}
+
 df_sifilis_ano <- df_sifilis |>
-  dplyr::group_by(ano_diag) |>
-  dplyr::summarise(n_casos_sifg = sum(n_casos_sifg)) |>
+  dplyr::group_by(ano) |>
+  dplyr::summarise(casos_sifg = n()) |>
   dplyr::ungroup()
 
 df_sifilis_ano |>
   ggplot2::ggplot() +
-  ggplot2::geom_col(aes(x = ano_diag, y = n_casos_sifg), fill = "#ABA2D1") +
+  ggplot2::geom_col(aes(x = ano, y = casos_sifg), fill = "#ABA2D1") +
   ggplot2::labs(title = "Distribuição de casos de Sífilis por ano",
        x = "Ano",
        y = "Número de casos") +
@@ -259,28 +277,48 @@ df_sifilis_ano |>
 
 ```
 
+##### Ano/mês de diagnóstico
+
+```{r distribuicao-ano-mes}
+
+df_sifilis_ano_mes <- df_sifilis |>
+  dplyr::filter(ano != "****") |> 
+  dplyr::group_by(ano, mes) |>
+  dplyr::summarise(casos_sifg = n()) |>
+  dplyr::ungroup() |> 
+  dplyr::mutate(mes_ano = paste0(ano, "-", mes, "-", "01")) |> 
+  dplyr::mutate(data = as.Date(mes_ano, format = "%Y-%m-%d"))
+
+df_sifilis_ano_mes |>
+  ggplot2::ggplot(aes(x = data, y = casos_sifg)) +
+  geom_line(fill = "#ABA2D1") +  # Add fill color for better visualization (optional)
+  labs(title = "Casos de Sífilis por Mês e Ano",  # Adjust title as needed
+       x = "Mês e Ano",
+       y = "Número de Casos") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "year", date_labels = "%Y")  # Adjust x-axis formatting (optional)
+```
+
 ##### Nos estados
 
 ```{r distribuicao-estados}
 df_sifilis_uf <- df_sifilis |>
-  dplyr::group_by(uf_res) |>
-  dplyr::summarise(n_casos_sifg = sum(n_casos_sifg),
-                   n_nascidos = sum(nasc_viv)) |>
-  dplyr::ungroup() |> 
-  dplyr::mutate(taxa_sifilis = n_casos_sifg / n_nascidos * 1000)
+  dplyr::group_by(uf_resi) |>
+  dplyr::summarise(casos_sifg = n()) |>
+  dplyr::ungroup()
 
 df_ufs <- data.table::fread("data-raw/ibge-ufs-pop-2022-est.csv") |>
   dplyr::mutate(uf_cod = as.character(uf_cod)) |> 
   dplyr::select(uf_cod, uf_nome)
 
-df_sifilis_uf <- dplyr::left_join(df_sifilis_uf, df_ufs, by = c("uf_res" = "uf_cod"))
+df_sifilis_uf <- dplyr::left_join(df_sifilis_uf, df_ufs, by = c("uf_resi" = "uf_cod"))
 
 uf_sf <- sf::read_sf(here::here("data-raw/dados-espaciais/uf_sf.shp")) |>
   dplyr::select(cod_stt, geometry)  |>
   dplyr::mutate(cod_stt = as.character(cod_stt))
 
 df_sifilis_uf_sf <- df_sifilis_uf |> 
-  dplyr::left_join(uf_sf, by = c("uf_res" = "cod_stt")) |> 
+  dplyr::left_join(uf_sf, by = c("uf_resi" = "cod_stt")) |> 
   sf::st_as_sf()
 
 df_sifilis_uf_sf <- sf::st_transform(df_sifilis_uf_sf, crs = '+proj=longlat +datum=WGS84')
@@ -291,9 +329,8 @@ df_sifilis_uf_sf <- sf::st_transform(df_sifilis_uf_sf, crs = '+proj=longlat +dat
 ```{r distribuicao-estados-grafico}
 df_sifilis_uf_sf |>
   ggplot2::ggplot() +
-  ggplot2::geom_sf(aes(fill = taxa_sifilis)) +
-  ggplot2::labs(title = "Taxa de casos de Sífilis por UF",
-       fill = "Taxa de sífilis (1000*casos/nascidos)") +
+  ggplot2::geom_sf(aes(fill = casos_sifg)) +
+  ggplot2::labs(title = "Número de casos de Sífilis por UF") +
   ggplot2::theme_void() +
   ggplot2::theme(legend.position = "bottom") +
   ggplot2::scale_fill_gradient2(low = "#F2D4F3", high = "#791A78") +
@@ -307,10 +344,9 @@ df_sifilis_uf_sf |>
 ```{r distribuicao-ano-tabela}
 
 df_sifilis_uf |> 
-  dplyr::select(uf_nome, n_casos_sifg, n_nascidos, taxa_sifilis) |>
-  dplyr::mutate(taxa_sifilis = round(taxa_sifilis, 2)) |>
+  dplyr::select(uf_nome, casos_sifg) |>
   gt::gt() |> 
-  gt::cols_label(uf_nome = "UF", n_casos_sifg = "Nº de casos", n_nascidos = "Nº de nascidos", taxa_sifilis = "Taxa de sífilis (1000*n_casos/n_nascidos)")
+  gt::cols_label(uf_nome = "UF", casos_sifg = "Nº de casos")
 
 ```
 
@@ -322,9 +358,9 @@ vars_av <- df_categoric_av$variavel
 i <- vars_av[1]
 
 ## Removendo NAs para contagens de categorias
-df_sifilis_categoric_vars <- df_sifilis_categoric_vars |>
+df_sifilis_categoric_vars <- df_sifilis_test |>
   dplyr::mutate(across(where(is.character), ~ ifelse(is.na(.x), "NA", .x))) |> 
-  dplyr::mutate(ano_diag = ifelse(ano_diag == "****", "NA", ano_diag))
+  dplyr::mutate(ano = ifelse(ano == "****", "NA", ano))
 
 df_vars_categ <- data.frame(variavel = character(), categorias = character())
 for(i in vars_av){
@@ -362,65 +398,55 @@ df_vars_categ |>
 
 ```
 
-#### Nascidos com anomalia
-
-```{r nascidos-anomalia}
-df_sifilis_anomalia <- df_sifilis |>
-  dplyr::group_by(ano_diag) |>
-  dplyr::summarise(n_casos_sifg = sum(n_casos_sifg),
-                   n_nascidos_anomalia = sum(nasc_c_anom),
-                   n_nascidos_vivos = sum(nasc_viv)) |>
-  dplyr::ungroup() |> 
-  dplyr::mutate(taxa_anomalia = n_nascidos_anomalia / n_nascidos_vivos * 1000)
-
-```
-
-##### Tabela
-
-```{r nascidos-anomalia-tabela}
-df_sifilis_anomalia |> 
-  dplyr::select(ano_diag, n_nascidos_anomalia, taxa_anomalia, n_casos_sifg, n_nascidos_vivos) |> 
-  gt::gt() |> 
-  gt::cols_label(ano_diag = "Ano", n_nascidos_anomalia = "Nº de nascidos com anomalia", taxa_anomalia = "Taxa de nascidos com anomalia", n_casos_sifg = "Nº de casos de Sífilis", n_nascidos_vivos = "Nº de nascidos vivos")
-
-
-```
-
-##### Gráfico
-
-```{r, nascidos-anomalia-grafico}
-library(ggplot2)
-df_sifilis_anomalia |>
-  dplyr::filter(ano_diag != "****") |> 
-  dplyr::mutate(ano_diag = as.numeric(ano_diag)) |> 
-  ggplot2::ggplot() +
-  ggplot2::geom_line(aes(x = ano_diag, y = taxa_anomalia), color = "#ABA2D1") +
-  ggplot2::labs(title = "Distribuição de taxa de nascidos com anomalia por ano",
-       x = "Ano",
-       y = "Taxa de nascidos com anomalia*") +
-  ggplot2::theme_minimal() +
-  ggplot2::scale_y_continuous(labels = scales::number) +
-  ggplot2::scale_x_continuous(breaks = seq(2007, 2023, 1))
-
-```
 
 ## Análise bivariada
 
-### Variáveis X por ano
+### Categóricas (agregadas por município)
 
-```{r n-casos-ano}
-df_sifilis_biv_ano <- df_sifilis |>
-  dplyr::group_by(ano_diag) |>
-  dplyr::summarise(n_casos_sifg = sum(n_casos_sifg)) |>
-  dplyr::ungroup()
+#### Variáveis e suas categorias por ano
 
-df_sifilis_biv_ano |>
+```{r n-casos-categorias-ano}
+
+df_categoric_av <- df_categoric |>
+  dplyr::filter(n_distinct <= 20)
+
+vars <- df_categoric_av$variavel
+
+vars <- vars[-c(2)]
+grafs_biv <- list()
+i <- 1
+for(var in vars){
+  # var <- "fx_etaria"
+  df_sifilis_biv_ano <- df_sifilis |>
+    dplyr::group_by(ano, !!as.name(var)) |>
+    dplyr::summarise(casos_sifg = n()) |>
+    dplyr::ungroup()
+  
+  grafs_biv[[i]] <- df_sifilis_biv_ano |> 
+    ggplot2::ggplot() +
+    ggplot2::geom_col(aes(x = ano, y = casos_sifg, fill = !!as.name(var))) +
+    ggplot2::labs(title = paste("Distribuição de casos de Sífilis por ano e", var),
+         x = paste0("Categorias de ", var),
+         y = "Número de casos") +
+    ggplot2::theme_minimal() +
+    ggplot2::scale_y_continuous(labels = scales::number) + 
+    ggplot2::scale_x_discrete(breaks = seq(2006, 2024, 2))
+  
+  i <- i+1
+}
+
+grafs_biv
+df_sifilis_biv_ano |> 
   ggplot2::ggplot() +
-  ggplot2::geom_col(aes(x = ano_diag, y = n_casos_sifg), fill = "#ABA2D1") +
-  ggplot2::labs(title = "Distribuição de casos de Sífilis por ano",
-       x = "Ano",
+  ggplot2::geom_col(aes(x = ano, y = casos_sifg, fill = !!as.name(var))) +
+  ggplot2::labs(title = paste("Distribuição de casos de Sífilis por ano e", var),
+       x = paste0("Categorias de ", var),
        y = "Número de casos") +
   ggplot2::theme_minimal() +
-  ggplot2::scale_y_continuous(labels = scales::number)
+  ggplot2::scale_y_continuous(labels = scales::number) + 
+  ggplot2::scale_x_discrete(breaks = seq(2006, 2024, 2))
+
+## Como adicionar uma escala ao eixo y, usando anos de dois em dois no ggplot2 
+
 
 ```

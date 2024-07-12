@@ -324,7 +324,17 @@ df_sifilis_13mi_g <- df_sifilis_13mi |>
 
 
 
+# Libraries
+library(ggplot2)
+library(babynames) # provide the dataset: a dataframe called babynames
+library(dplyr)
+library(hrbrthemes)
+library(viridis)
 
+# Keep only 3 names
+don <- babynames %>%
+  filter(name %in% c("Ashley", "Patricia", "Helen")) %>%
+  filter(sex=="F")
 
 
 

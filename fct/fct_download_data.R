@@ -38,16 +38,25 @@ func_download_data <- function(){
     #               n_casos_sifg = CASOS_SIFG) |>
     dplyr::collect()
 
-  data.table::fwrite(df_sifilis, "data-raw/df_sifilis_all.csv")
+  # data.table::fwrite(df_sifilis, "data-raw/df_sifilis_all.csv")
 
   ## Calculando taxa de sífilis por nascidos vivos
   df_sifilis <- df_sifilis |>
     dplyr::mutate(taxa_sifg_nv = CASOS_SIFG / NASCIDOS_VIVOS)
 
   # colnames(df_sifilis)
-  saveRDS(df_sifilis, "data-raw/df_sifilis_all.RDS")
+  saveRDS(df_sifilis, "data-raw/df_sifilis_all_agreg.RDS")
 
   # df_sifilis_ <- readRDS("data-raw/df_sifilis.RDS")
+
+  ## Dado não agregado
+
+  df_sifilis <- tbl(con, "view_sifilis_gestantes_a_partir_2007") |>
+    dplyr::collect()
+
+
+  saveRDS(df_sifilis, "data-raw/df_sifilis_all_n_agreg.RDS")
+
 }
 
 #município de residência, ano do diagnóstico, mês de diagnóstico, faixa etária, raça/cor e escolaridade  (variável CASOS_SIFG);
